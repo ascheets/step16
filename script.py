@@ -4,10 +4,10 @@ from matplotlib import cm
 import matplotlib.pyplot as plt
 import numpy as np
 
-nx = 301
-ny = 301
+nx = 201
+ny = 201
 
-secs = 500
+secs = 5000
 nit=100
 
 dx = 2.0/(nx-1)
@@ -18,14 +18,16 @@ y = np.linspace(0,0.5,ny)
 L = 2
 X,Y = np.meshgrid(x,y)
 
-rho = 2.0
+rho = 0.0125
 #nu = .01
-mu = 0.001
+mu = 0.0001
 nu = mu/rho
-F = 30
-dt = .00025
+F = 100
+dt = .0001
 
-res = 5
+#arrow density resolution
+res = 3
+#plotting figure resolution
 figRes = 2
 
 u = np.zeros((ny, nx))
@@ -96,7 +98,7 @@ def presPoisson(p, dx, dy, b):
     return p
 
 
-def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu):
+def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F):
     un = np.empty_like(u)
     vn = np.empty_like(v)
     b = np.zeros((ny, nx))
@@ -169,27 +171,43 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu):
         #u[:,-1] = 0
 
         #restriction
-        #u[0:2*ny/5,2*nx/5:3*nx/5] = 0 #bottom 
-        #u[3*ny/5:-1,2*nx/5:3*nx/5] = 0 #top
-        #v[0:2*ny/5,2*nx/5:3*nx/5] = 0 #bottom
-        #v[3*ny/5:-1,2*nx/5:3*nx/5] = 0 #top
+        u[0:2*ny/5,2.7*nx/5:3*nx/5] = 0 #bottom 
+        u[3*ny/5:-1,2.7*nx/5:3*nx/5] = 0 #top
+        v[0:2*ny/5,2.7*nx/5:3*nx/5] = 0 #bottom
+        v[3*ny/5:-1,2.7*nx/5:3*nx/5] = 0 #top
 
-        x0 = nx/2
-        y0 = ny/2
-        theta = 0
-        dTheta = np.pi/(nx*2)
-        r = ny/10
+        # x0 = nx/2
+        # y0 = ny - 1
+        # theta = 0
+        # dTheta = np.pi/(nx*5)
+        # r = ny/3
 
-        while theta <= np.pi:
+        # while theta >= -np.pi:
 
-            x = x0 + r*np.cos(theta)
-            y = y0 + r*np.sin(theta)
+        #     x = x0 + r*np.cos(theta)
+        #     y = y0 + r*np.sin(theta)
 
-            u[x,-y:y] = 0
-            v[x,-y:y] = 0
+        #     u[y,x:-x] = 0
+        #     v[y,x:-x] = 0
 
-            theta = theta + dTheta
-        
+        #     theta = theta - dTheta
+            
+        # x0 = nx/2
+        # y0 = 0
+        # theta = 0
+        # dTheta = np.pi/(nx*5)
+        # r = ny/3
+            
+        # while theta <= np.pi:
+
+        #     x = x0 + r*np.cos(theta)
+        #     y = y0 + r*np.sin(theta)
+
+        #     u[y,x:-x] = 0
+        #     v[y,x:-x] = 0
+
+        #     theta = theta + dTheta
+            
 
         #upper walls
         u[-1,:] = 0    
@@ -198,13 +216,17 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu):
         #v[:,0] = 0
         #v[:,-1] = 0 #x boundary conditions periodic, dealt with above...
 
-        if n == nt/2:
+        if n % figRes == 0:
 
             meanU = np.average(u)
+            print "n of nt: ", n 
             print "meanU = ", meanU
             Re = (rho*meanU*L)/mu
             print "Re: ", Re
-            
+            print "F: ", F
+            #when the Re gets to 2000, turn down the pressure
+            if Re >= 2000:
+                F = 50
             
         if n % figRes == 0:
 
@@ -213,8 +235,10 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu):
                 #need to add three zeros...
                 #plot the current state of u,v,p
                 fig = plt.figure(figsize=(11,7), dpi=100)
-                plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
-                plt.colorbar()
+                #plt.ylim(0.15,0.35)
+                #plt.xlim(0.75,1.25)
+                #plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
+                #plt.colorbar()
                 #plt.contour(X,Y,p)               ###plotting the pressure field outlines
                 plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res])
                 plt.xlabel('X')
@@ -229,8 +253,10 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu):
                 #need to add two zeros...
                 #plot the current state of u,v,p
                 fig = plt.figure(figsize=(11,7), dpi=100)
-                plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
-                plt.colorbar()
+                #plt.ylim(0.15,0.35)
+                #plt.xlim(0.75,1.25)
+                #plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
+                #plt.colorbar()
                 #plt.contour(X,Y,p)               ###plotting the pressure field outlines
                 plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res])
                 plt.xlabel('X')
@@ -245,8 +271,8 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu):
                 #need to add one zero
                 #plot the current state of u,v,p
                 fig = plt.figure(figsize=(11,7), dpi=100)
-                plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
-                plt.colorbar()
+                #plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
+                #plt.colorbar()
                 #plt.contour(X,Y,p)               ###plotting the pressure field outlines
                 plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res])
                 plt.xlabel('X')
@@ -260,8 +286,8 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu):
             
                 #plot the current state of u,v,p
                 fig = plt.figure(figsize=(11,7), dpi=100)
-                plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
-                plt.colorbar()
+                #plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
+                #plt.colorbar()
                 #plt.contour(X,Y,p)               ###plotting the pressure field outlines
                 plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res])
                 plt.xlabel('X')
@@ -280,7 +306,7 @@ def channel(nt):
     v = np.zeros((ny, nx))
     p = np.zeros((ny, nx))
     b = np.zeros((ny, nx))
-    u, v, p = channelFlow(nt, u, v, dt, dx, dy, p, rho, nu)
+    u, v, p = channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F)
     fig = plt.figure(figsize=(11,7), dpi=100)
     plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
     plt.colorbar()

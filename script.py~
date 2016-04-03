@@ -1,36 +1,37 @@
 #step 12
-from mpl_toolkits.mplot3d import Axes3D
+#from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 import matplotlib.pyplot as plt
 import numpy as np
 
-nx = 101
-ny = 101
+nx = 301
+ny = 301
 
-nt = 10
+secs = 500
 nit=100
 
 dx = 2.0/(nx-1)
-dy = 2.0/(ny-1)
+dy = 0.5/(ny-1)
 x = np.linspace(0,2,nx)
-y = np.linspace(0,2,ny)
+y = np.linspace(0,0.5,ny)
 
 L = 2
 X,Y = np.meshgrid(x,y)
 
-rho = 0.175
+rho = 2.0
 #nu = .01
 mu = 0.001
 nu = mu/rho
-F = 3
-dt = .001
+F = 30
+dt = .00025
+
+res = 5
+figRes = 2
 
 u = np.zeros((ny, nx))
 v = np.zeros((ny, nx))
 p = np.zeros((ny, nx)) 
 b = np.zeros((ny, nx))
-
-
 
 #building up the source term for poisson pressure equation
 def buildUpB(b, rho, dt, u, v, dx, dy):
@@ -167,13 +168,28 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu):
         #u[:,0] = 0 
         #u[:,-1] = 0
 
-        #trying to create centuri nozzle
-        
         #restriction
-        u[0:ny/2,nx/2] = 0 #bottom 
-        u[3*ny/4:-1,nx/2] = 0 #top
-        v[0:ny/2,nx/2] = 0 #bottom
-        v[3*ny/4:-1,nx/2] = 0 #top
+        #u[0:2*ny/5,2*nx/5:3*nx/5] = 0 #bottom 
+        #u[3*ny/5:-1,2*nx/5:3*nx/5] = 0 #top
+        #v[0:2*ny/5,2*nx/5:3*nx/5] = 0 #bottom
+        #v[3*ny/5:-1,2*nx/5:3*nx/5] = 0 #top
+
+        x0 = nx/2
+        y0 = ny/2
+        theta = 0
+        dTheta = np.pi/(nx*2)
+        r = ny/10
+
+        while theta <= np.pi:
+
+            x = x0 + r*np.cos(theta)
+            y = y0 + r*np.sin(theta)
+
+            u[x,-y:y] = 0
+            v[x,-y:y] = 0
+
+            theta = theta + dTheta
+        
 
         #upper walls
         u[-1,:] = 0    
@@ -188,10 +204,10 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu):
             print "meanU = ", meanU
             Re = (rho*meanU*L)/mu
             print "Re: ", Re
-
-        
-        if n % 10 == 0:
             
+            
+        if n % figRes == 0:
+
             if figCount < 10:
 
                 #need to add three zeros...
@@ -200,7 +216,7 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu):
                 plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
                 plt.colorbar()
                 #plt.contour(X,Y,p)               ###plotting the pressure field outlines
-                plt.quiver(X[::2,::2],Y[::2,::2],u[::2,::2],v[::2,::2])
+                plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res])
                 plt.xlabel('X')
                 plt.ylabel('Y')
                 path = "./pngs/fig-00" + format(figCount) + ".png"
@@ -216,7 +232,7 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu):
                 plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
                 plt.colorbar()
                 #plt.contour(X,Y,p)               ###plotting the pressure field outlines
-                plt.quiver(X[::2,::2],Y[::2,::2],u[::2,::2],v[::2,::2])
+                plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res])
                 plt.xlabel('X')
                 plt.ylabel('Y')
                 path = "./pngs/fig-0" + format(figCount) + ".png"
@@ -232,7 +248,7 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu):
                 plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
                 plt.colorbar()
                 #plt.contour(X,Y,p)               ###plotting the pressure field outlines
-                plt.quiver(X[::2,::2],Y[::2,::2],u[::2,::2],v[::2,::2])
+                plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res])
                 plt.xlabel('X')
                 plt.ylabel('Y')
                 path = "./pngs/fig-" + format(figCount) + ".png"
@@ -247,7 +263,7 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu):
                 plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
                 plt.colorbar()
                 #plt.contour(X,Y,p)               ###plotting the pressure field outlines
-                plt.quiver(X[::2,::2],Y[::2,::2],u[::2,::2],v[::2,::2])
+                plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res])
                 plt.xlabel('X')
                 plt.ylabel('Y')
                 path = "./pngs/fig-" + format(figCount) + ".png"
@@ -269,7 +285,7 @@ def channel(nt):
     plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
     plt.colorbar()
     plt.contour(X,Y,p)               ###plotting the pressure field outlines
-    plt.quiver(X[::2,::2],Y[::2,::2],u[::2,::2],v[::2,::2]) ##plotting velocity ::3 --> only plot every 3rd data point
+    plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res]) ##plotting velocity ::3 --> only plot every 3rd data point
     plt.xlabel('X')
     plt.ylabel('Y')
 
@@ -283,9 +299,9 @@ def channel(nt):
 #channel(25)
 # channel(50)
 # channel(75)
-#channel(100)
+channel(secs)
 #channel(500)
-channel(1000)
+#channel(10000)
 #channel(1200)
 #channel(3500)
 #channel(6000)
