@@ -219,7 +219,7 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F):
         if n % figRes == 0:
 
             meanU = np.average(u)
-            print "n of nt: ", n 
+            print "n of nt: ", n, "/", secs
             print "meanU = ", meanU
             Re = (rho*meanU*L)/mu
             print "Re: ", Re
