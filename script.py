@@ -225,8 +225,8 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F):
             print "Re: ", Re
             print "F: ", F
             #when the Re gets to 2000, turn down the pressure
-            if Re >= 2000:
-                F = 50
+            #if Re >= 2000:
+            #    F = 50
             
         if n % figRes == 0:
 
