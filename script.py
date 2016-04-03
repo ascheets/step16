@@ -7,7 +7,7 @@ import numpy as np
 nx = 201
 ny = 201
 
-secs = 5000
+secs = 1000
 nit=100
 
 dx = 2.0/(nx-1)
@@ -22,11 +22,11 @@ rho = 0.0125
 #nu = .01
 mu = 0.0001
 nu = mu/rho
-F = 100
+F = 200
 dt = .0001
 
 #arrow density resolution
-res = 3
+res = 6
 #plotting figure resolution
 figRes = 2
 
@@ -171,32 +171,32 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F):
         #u[:,-1] = 0
 
         #restriction
-        u[0:2*ny/5,2.7*nx/5:3*nx/5] = 0 #bottom 
-        u[3*ny/5:-1,2.7*nx/5:3*nx/5] = 0 #top
-        v[0:2*ny/5,2.7*nx/5:3*nx/5] = 0 #bottom
-        v[3*ny/5:-1,2.7*nx/5:3*nx/5] = 0 #top
+        #u[0:2*ny/5,2.7*nx/5:3*nx/5] = 0 #bottom 
+        #u[3*ny/5:-1,2.7*nx/5:3*nx/5] = 0 #top
+        #v[0:2*ny/5,2.7*nx/5:3*nx/5] = 0 #bottom
+        #v[3*ny/5:-1,2.7*nx/5:3*nx/5] = 0 #top
 
-        # x0 = nx/2
-        # y0 = ny - 1
-        # theta = 0
-        # dTheta = np.pi/(nx*5)
-        # r = ny/3
+        x0 = nx/3
+        y0 = ny/2
+        theta = 0
+        dTheta = np.pi/(nx*5)
+        r = ny/6
 
-        # while theta >= -np.pi:
-
-        #     x = x0 + r*np.cos(theta)
-        #     y = y0 + r*np.sin(theta)
-
-        #     u[y,x:-x] = 0
-        #     v[y,x:-x] = 0
-
-        #     theta = theta - dTheta
+        while theta <= 2*np.pi:
             
-        # x0 = nx/2
-        # y0 = 0
-        # theta = 0
-        # dTheta = np.pi/(nx*5)
-        # r = ny/3
+            x = x0 + r*np.cos(theta)
+            y = y0 + r*np.sin(theta)
+
+            u[-y:y,x] = 0
+            v[-y:y,x] = 0
+
+            theta = theta +  dTheta
+            
+        #x0 = nx/2
+        #y0 = 0
+        #theta = 0
+        #dTheta = np.pi/(nx*5)
+        #r = ny/3
             
         # while theta <= np.pi:
 
@@ -237,8 +237,8 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F):
                 fig = plt.figure(figsize=(11,7), dpi=100)
                 #plt.ylim(0.15,0.35)
                 #plt.xlim(0.75,1.25)
-                #plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
-                #plt.colorbar()
+                plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
+                plt.colorbar()
                 #plt.contour(X,Y,p)               ###plotting the pressure field outlines
                 plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res])
                 plt.xlabel('X')
@@ -255,8 +255,8 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F):
                 fig = plt.figure(figsize=(11,7), dpi=100)
                 #plt.ylim(0.15,0.35)
                 #plt.xlim(0.75,1.25)
-                #plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
-                #plt.colorbar()
+                plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
+                plt.colorbar()
                 #plt.contour(X,Y,p)               ###plotting the pressure field outlines
                 plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res])
                 plt.xlabel('X')
@@ -271,8 +271,8 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F):
                 #need to add one zero
                 #plot the current state of u,v,p
                 fig = plt.figure(figsize=(11,7), dpi=100)
-                #plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
-                #plt.colorbar()
+                plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
+                plt.colorbar()
                 #plt.contour(X,Y,p)               ###plotting the pressure field outlines
                 plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res])
                 plt.xlabel('X')
@@ -286,8 +286,8 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F):
             
                 #plot the current state of u,v,p
                 fig = plt.figure(figsize=(11,7), dpi=100)
-                #plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
-                #plt.colorbar()
+                plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
+                plt.colorbar()
                 #plt.contour(X,Y,p)               ###plotting the pressure field outlines
                 plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res])
                 plt.xlabel('X')
@@ -310,7 +310,7 @@ def channel(nt):
     fig = plt.figure(figsize=(11,7), dpi=100)
     plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
     plt.colorbar()
-    plt.contour(X,Y,p)               ###plotting the pressure field outlines
+    #plt.contour(X,Y,p)               ###plotting the pressure field outlines
     plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res]) ##plotting velocity ::3 --> only plot every 3rd data point
     plt.xlabel('X')
     plt.ylabel('Y')
