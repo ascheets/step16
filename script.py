@@ -7,23 +7,32 @@ import numpy as np
 nx = 201
 ny = 201
 
-secs = 1000
-nit=100
+secs = 2500
 
-dx = 2.0/(nx-1)
-dy = 0.5/(ny-1)
-x = np.linspace(0,2,nx)
-y = np.linspace(0,0.5,ny)
+nit=25
 
-L = 2
+sigma = 0.5
+c = 5.0
+
+l = 2.0
+w = 0.5
+
+dx = l/(nx-1)
+dy = w/(ny-1)
+dt = (sigma*dx)/c
+print "dt: ", dt
+x = np.linspace(0,l,nx)
+y = np.linspace(0,w,ny)
+
+L = l/5
 X,Y = np.meshgrid(x,y)
 
-rho = 0.0125
+rho = 0.1
 #nu = .01
 mu = 0.0001
 nu = mu/rho
-F = 300
-dt = .0001
+F = 200
+
 
 #arrow density resolution
 res = 6
@@ -68,11 +77,15 @@ def buildUpB(b, rho, dt, u, v, dx, dy):
 
 #function which ensures continuity by using pressure constraint to enforce zero velocity divergence
 #iterative function, relaxes pressure in artificial time
-def presPoisson(p, dx, dy, b):
+def presPoisson(p, dx, dy, b, l1norm_target):
+
+    l1norm = 1
+
     pn = np.empty_like(p)
     pn = p.copy()
     
-    for q in range(nit):
+    #for q in range(nit):
+    while l1norm > l1norm_target:
         pn = p.copy()
         p[1:-1,1:-1] =( ((pn[1:-1,2:]+pn[1:-1,0:-2])*dy**2+(pn[2:,1:-1]+pn[0:-2,1:-1])*dx**2)/(2*(dx**2+dy**2)) - #remnants of laplacian pressure business
                         rho*dx**2*dy**2/(2*(dx**2+dy**2))* #weird term that comes about from transposing
@@ -90,6 +103,24 @@ def presPoisson(p, dx, dy, b):
         #wall boundary conditions, pressure
         p[-1,:] =p[-2,:] ##dp/dy = 0 at y = 2
         p[0,:] = p[1,:]  ##dp/dy = 0 at y = 0
+
+        #cylinder
+        x0 = nx/5
+        y0 = ny/2
+        theta = 0
+        dTheta = np.pi/(nx*5)
+        r = ny/10
+
+        while theta <= 2*np.pi:
+            
+            x = x0 + r*np.cos(theta)
+            y = y0 + r*np.sin(theta)
+            
+            #-y:y -->full
+
+            p[-y:y,x] = 0
+
+            theta = theta +  dTheta
         
         #previous conditions along x boundaries dealt with above
         #p[:,0]=p[:,1]    ##dp/dx = 0 at x = 0
@@ -97,6 +128,19 @@ def presPoisson(p, dx, dy, b):
         
     return p
 
+
+
+def laplace2d(p, y, dx, dy, l1norm_target):
+
+    l1norm = 1
+
+    pn = np.empty_like(p)
+
+    while l1norm > l1norm_target:
+        pn = p.copy()
+        
+        
+    
 
 def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F):
     un = np.empty_like(u)
@@ -170,22 +214,31 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F):
         #u[:,0] = 0 
         #u[:,-1] = 0
 
-        #restriction
-        #u[0:2*ny/5,2.7*nx/5:3*nx/5] = 0 #bottom 
-        #u[3*ny/5:-1,2.7*nx/5:3*nx/5] = 0 #top
-        #v[0:2*ny/5,2.7*nx/5:3*nx/5] = 0 #bottom
-        #v[3*ny/5:-1,2.7*nx/5:3*nx/5] = 0 #top
+        # # # #restriction nozzleish
+        # u[0:2*ny/5,2.7*nx/5:3*nx/5] = 0 #bottom 
+        # u[3*ny/5:-1,2.7*nx/5:3*nx/5] = 0 #top
+        # v[0:2*ny/5,2.7*nx/5:3*nx/5] = 0 #bottom
+        # v[3*ny/5:-1,2.7*nx/5:3*nx/5] = 0 #top
 
-        x0 = nx/3
+        # restriction dropoff
+        # u[0:3*ny/5,0:nx/5] = 0 #bottom 
+        # u[4*ny/5:-1,:] = 0 #top
+        # v[0:3*ny/5,0:nx/5] = 0 #bottom
+        # v[4*ny/5:-1,:] = 0 #top
+
+        #cylinder
+        x0 = nx/5
         y0 = ny/2
         theta = 0
         dTheta = np.pi/(nx*5)
-        r = ny/6
+        r = ny/10
 
         while theta <= 2*np.pi:
             
             x = x0 + r*np.cos(theta)
             y = y0 + r*np.sin(theta)
+            
+            #-y:y -->full
 
             u[-y:y,x] = 0
             v[-y:y,x] = 0
@@ -219,82 +272,95 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F):
         if n % figRes == 0:
 
             meanU = np.average(u)
-            print "n of nt: ", n 
+            print "n of nt: ", n, "/", secs
             print "meanU = ", meanU
             Re = (rho*meanU*L)/mu
             print "Re: ", Re
             print "F: ", F
+            cfl = (meanU*dt)/dx
+            print "sigma: ", cfl
             #when the Re gets to 2000, turn down the pressure
-            #if Re >= 2000:
-            #    F = 50
+            # if Re >= 1200:
+            #     F = 0.125
+            # elif Re <= 300:
+            #     F = 200
+            # elif Re >= 5000:
+            #     F = 0.001
             
         if n % figRes == 0:
 
             if figCount < 10:
 
-                #need to add three zeros...
                 #plot the current state of u,v,p
+
+                ###plotting the pressure field as a contour
                 fig = plt.figure(figsize=(11,7), dpi=100)
-                #plt.ylim(0.15,0.35)
-                #plt.xlim(0.75,1.25)
-                plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
-                plt.colorbar()
-                #plt.contour(X,Y,p)               ###plotting the pressure field outlines
+                bounds = np.linspace(-0.10, 0.10, 15, endpoint=True)
+                sc = plt.contourf(X,Y,p,alpha=0.5,vmin=-0.1,vmax=0.1,levels=bounds,extend='both',cmap='bwr') 
+                cb = plt.colorbar(sc)
+
                 plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res])
                 plt.xlabel('X')
                 plt.ylabel('Y')
+
                 path = "./pngs/fig-00" + format(figCount) + ".png"
                 plt.savefig(path)
                 plt.close("all")
+
                 figCount = figCount + 1
                               
             elif figCount < 100:
 
-                #need to add two zeros...
-                #plot the current state of u,v,p
+                ###plotting the pressure field as a contour
                 fig = plt.figure(figsize=(11,7), dpi=100)
-                #plt.ylim(0.15,0.35)
-                #plt.xlim(0.75,1.25)
-                plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
-                plt.colorbar()
-                #plt.contour(X,Y,p)               ###plotting the pressure field outlines
+                bounds = np.linspace(-0.10, 0.10, 15, endpoint=True)
+                sc = plt.contourf(X,Y,p,alpha=0.5,vmin=-0.1,vmax=0.1,levels=bounds,extend='both',cmap='bwr') 
+                cb = plt.colorbar(sc)
+
                 plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res])
                 plt.xlabel('X')
                 plt.ylabel('Y')
+
                 path = "./pngs/fig-0" + format(figCount) + ".png"
                 plt.savefig(path)
                 plt.close("all")
+
                 figCount = figCount + 1
                               
             elif figCount < 1000:
                 
-                #need to add one zero
-                #plot the current state of u,v,p
+                ###plotting the pressure field as a contour
                 fig = plt.figure(figsize=(11,7), dpi=100)
-                plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
-                plt.colorbar()
-                #plt.contour(X,Y,p)               ###plotting the pressure field outlines
+                bounds = np.linspace(-0.10, 0.10, 15, endpoint=True)
+                sc = plt.contourf(X,Y,p,alpha=0.5,vmin=-0.1,vmax=0.1,levels=bounds,extend='both',cmap='bwr') 
+                cb = plt.colorbar(sc)
+                
                 plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res])
                 plt.xlabel('X')
                 plt.ylabel('Y')
+                
                 path = "./pngs/fig-" + format(figCount) + ".png"
                 plt.savefig(path)
                 plt.close("all")
+                
                 figCount = figCount + 1
               
             else:
             
-                #plot the current state of u,v,p
+                ###plotting the pressure field as a contour
                 fig = plt.figure(figsize=(11,7), dpi=100)
-                plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
-                plt.colorbar()
-                #plt.contour(X,Y,p)               ###plotting the pressure field outlines
+                bounds = np.linspace(-0.10, 0.10, 15, endpoint=True)
+                sc = plt.contourf(X,Y,p,alpha=0.5,vmin=-0.1,vmax=0.1,levels=bounds,extend='both',cmap='bwr') 
+                cb = plt.colorbar(sc)
+
                 plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res])
                 plt.xlabel('X')
                 plt.ylabel('Y')
+                
                 path = "./pngs/fig-" + format(figCount) + ".png"
                 plt.savefig(path)
                 plt.close("all")
+                
                 figCount = figCount + 1
               
     return u, v, p
