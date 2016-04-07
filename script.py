@@ -4,18 +4,19 @@ from matplotlib import cm
 import matplotlib.pyplot as plt
 import numpy as np
 
-nx = 201
-ny = 201
+nx = 301
+ny = 301
 
-secs = 2500
+secs = 1000
 
 nit=25
 
+tol = 1e-3
 sigma = 0.5
 c = 5.0
 
 l = 2.0
-w = 0.5
+w = 2.0
 
 dx = l/(nx-1)
 dy = w/(ny-1)
@@ -31,7 +32,7 @@ rho = 0.1
 #nu = .01
 mu = 0.0001
 nu = mu/rho
-F = 200
+F = 100
 
 
 #arrow density resolution
@@ -83,9 +84,12 @@ def presPoisson(p, dx, dy, b, l1norm_target):
 
     pn = np.empty_like(p)
     pn = p.copy()
+
+    #its = 0
     
-    #for q in range(nit):
-    while l1norm > l1norm_target:
+    for q in range(nit):
+    #while l1norm > l1norm_target:
+
         pn = p.copy()
         p[1:-1,1:-1] =( ((pn[1:-1,2:]+pn[1:-1,0:-2])*dy**2+(pn[2:,1:-1]+pn[0:-2,1:-1])*dx**2)/(2*(dx**2+dy**2)) - #remnants of laplacian pressure business
                         rho*dx**2*dy**2/(2*(dx**2+dy**2))* #weird term that comes about from transposing
@@ -103,13 +107,21 @@ def presPoisson(p, dx, dy, b, l1norm_target):
         #wall boundary conditions, pressure
         p[-1,:] =p[-2,:] ##dp/dy = 0 at y = 2
         p[0,:] = p[1,:]  ##dp/dy = 0 at y = 0
+            
+        #its = its + 1
+        
+        #previous conditions along x boundaries dealt with above
+        #p[:,0]=p[:,1]    ##dp/dx = 0 at x = 0
+        #p[:,-1]=0        ##p = 0 at x = 2
+
+        #l1norm = (np.sum(np.abs(p[nx/2:]) - np.abs(pn[nx/2:])))/np.sum(np.abs(pn[nx/2:]))
 
         #cylinder
-        x0 = nx/5
+        x0 = nx/3
         y0 = ny/2
         theta = 0
         dTheta = np.pi/(nx*5)
-        r = ny/10
+        r = ny/22
 
         while theta <= 2*np.pi:
             
@@ -122,25 +134,10 @@ def presPoisson(p, dx, dy, b, l1norm_target):
 
             theta = theta +  dTheta
         
-        #previous conditions along x boundaries dealt with above
-        #p[:,0]=p[:,1]    ##dp/dx = 0 at x = 0
-        #p[:,-1]=0        ##p = 0 at x = 2
-        
+
+    #print "its: ", its
+
     return p
-
-
-
-def laplace2d(p, y, dx, dy, l1norm_target):
-
-    l1norm = 1
-
-    pn = np.empty_like(p)
-
-    while l1norm > l1norm_target:
-        pn = p.copy()
-        
-        
-    
 
 def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F):
     un = np.empty_like(u)
@@ -155,7 +152,7 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F):
         vn = v.copy()
         
         b = buildUpB(b, rho, dt, u, v, dx, dy)
-        p = presPoisson(p, dx, dy, b)
+        p = presPoisson(p, dx, dy, b, tol)
         
         u[1:-1,1:-1] =( un[1:-1,1:-1]- #from FD in time
                         un[1:-1,1:-1]*dt/dx*(un[1:-1,1:-1]-un[1:-1,0:-2])- #gradu,gradx
@@ -227,11 +224,11 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F):
         # v[4*ny/5:-1,:] = 0 #top
 
         #cylinder
-        x0 = nx/5
+        x0 = nx/3
         y0 = ny/2
         theta = 0
         dTheta = np.pi/(nx*5)
-        r = ny/10
+        r = ny/22
 
         while theta <= 2*np.pi:
             
@@ -280,8 +277,8 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F):
             cfl = (meanU*dt)/dx
             print "sigma: ", cfl
             #when the Re gets to 2000, turn down the pressure
-            # if Re >= 1200:
-            #     F = 0.125
+            if Re >= 400:
+                F = 0.125
             # elif Re <= 300:
             #     F = 200
             # elif Re >= 5000:
@@ -295,8 +292,8 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F):
 
                 ###plotting the pressure field as a contour
                 fig = plt.figure(figsize=(11,7), dpi=100)
-                bounds = np.linspace(-0.10, 0.10, 15, endpoint=True)
-                sc = plt.contourf(X,Y,p,alpha=0.5,vmin=-0.1,vmax=0.1,levels=bounds,extend='both',cmap='bwr') 
+                bounds = np.linspace(-0.05, 0.05, 15, endpoint=True)
+                sc = plt.contourf(X,Y,p,alpha=0.5,vmin=-0.03,vmax=0.03,levels=bounds,extend='both',cmap='bwr') 
                 cb = plt.colorbar(sc)
 
                 plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res])
@@ -313,8 +310,8 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F):
 
                 ###plotting the pressure field as a contour
                 fig = plt.figure(figsize=(11,7), dpi=100)
-                bounds = np.linspace(-0.10, 0.10, 15, endpoint=True)
-                sc = plt.contourf(X,Y,p,alpha=0.5,vmin=-0.1,vmax=0.1,levels=bounds,extend='both',cmap='bwr') 
+                bounds = np.linspace(-0.05, 0.05, 15, endpoint=True)
+                sc = plt.contourf(X,Y,p,alpha=0.5,vmin=-0.03,vmax=0.03,levels=bounds,extend='both',cmap='bwr') 
                 cb = plt.colorbar(sc)
 
                 plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res])
@@ -331,8 +328,8 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F):
                 
                 ###plotting the pressure field as a contour
                 fig = plt.figure(figsize=(11,7), dpi=100)
-                bounds = np.linspace(-0.10, 0.10, 15, endpoint=True)
-                sc = plt.contourf(X,Y,p,alpha=0.5,vmin=-0.1,vmax=0.1,levels=bounds,extend='both',cmap='bwr') 
+                bounds = np.linspace(-0.05, 0.05, 15, endpoint=True)
+                sc = plt.contourf(X,Y,p,alpha=0.5,vmin=-0.03,vmax=0.03,levels=bounds,extend='both',cmap='bwr') 
                 cb = plt.colorbar(sc)
                 
                 plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res])
@@ -349,8 +346,8 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F):
             
                 ###plotting the pressure field as a contour
                 fig = plt.figure(figsize=(11,7), dpi=100)
-                bounds = np.linspace(-0.10, 0.10, 15, endpoint=True)
-                sc = plt.contourf(X,Y,p,alpha=0.5,vmin=-0.1,vmax=0.1,levels=bounds,extend='both',cmap='bwr') 
+                bounds = np.linspace(-0.05, 0.05, 15, endpoint=True)
+                sc = plt.contourf(X,Y,p,alpha=0.5,vmin=-0.05,vmax=0.05,levels=bounds,extend='both',cmap='bwr') 
                 cb = plt.colorbar(sc)
 
                 plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res])
