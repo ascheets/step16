@@ -4,17 +4,18 @@ from matplotlib import cm
 import matplotlib.pyplot as plt
 import numpy as np
 
-nx = 301
-ny = 301
+nx = 501
+ny = 501
 
-secs = 1000
+secs = 500
 
 nit=25
 
-tol = 1e-3
+tol = 0.05
 sigma = 0.5
 c = 5.0
 
+radius = ny/60
 l = 2.0
 w = 2.0
 
@@ -25,14 +26,15 @@ print "dt: ", dt
 x = np.linspace(0,l,nx)
 y = np.linspace(0,w,ny)
 
-L = l/5
+#characteristic length is diameter of cylinder
+L = l/30
 X,Y = np.meshgrid(x,y)
 
 rho = 0.1
 #nu = .01
 mu = 0.0001
 nu = mu/rho
-F = 100
+F = 150
 
 
 #arrow density resolution
@@ -85,10 +87,10 @@ def presPoisson(p, dx, dy, b, l1norm_target):
     pn = np.empty_like(p)
     pn = p.copy()
 
-    #its = 0
+    its = 0
     
-    for q in range(nit):
-    #while l1norm > l1norm_target:
+    #for q in range(nit):
+    while l1norm > l1norm_target:
 
         pn = p.copy()
         p[1:-1,1:-1] =( ((pn[1:-1,2:]+pn[1:-1,0:-2])*dy**2+(pn[2:,1:-1]+pn[0:-2,1:-1])*dx**2)/(2*(dx**2+dy**2)) - #remnants of laplacian pressure business
@@ -108,20 +110,20 @@ def presPoisson(p, dx, dy, b, l1norm_target):
         p[-1,:] =p[-2,:] ##dp/dy = 0 at y = 2
         p[0,:] = p[1,:]  ##dp/dy = 0 at y = 0
             
-        #its = its + 1
+        its = its + 1
         
         #previous conditions along x boundaries dealt with above
         #p[:,0]=p[:,1]    ##dp/dx = 0 at x = 0
         #p[:,-1]=0        ##p = 0 at x = 2
 
-        #l1norm = (np.sum(np.abs(p[nx/2:]) - np.abs(pn[nx/2:])))/np.sum(np.abs(pn[nx/2:]))
+        l1norm = (np.sum(np.abs(p[:]) - np.abs(pn[:])))/np.sum(np.abs(pn[:] + 0.00001))
 
         #cylinder
         x0 = nx/3
         y0 = ny/2
         theta = 0
         dTheta = np.pi/(nx*5)
-        r = ny/22
+        r = radius
 
         while theta <= 2*np.pi:
             
@@ -135,11 +137,11 @@ def presPoisson(p, dx, dy, b, l1norm_target):
             theta = theta +  dTheta
         
 
-    #print "its: ", its
+    print "its: ", its
 
     return p
 
-def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F):
+def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F, tol):
     un = np.empty_like(u)
     vn = np.empty_like(v)
     b = np.zeros((ny, nx))
@@ -228,7 +230,7 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F):
         y0 = ny/2
         theta = 0
         dTheta = np.pi/(nx*5)
-        r = ny/22
+        r = radius
 
         while theta <= 2*np.pi:
             
@@ -277,13 +279,14 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F):
             cfl = (meanU*dt)/dx
             print "sigma: ", cfl
             #when the Re gets to 2000, turn down the pressure
-            if Re >= 400:
-                F = 0.125
-            # elif Re <= 300:
-            #     F = 200
+            # if Re >= 500:
+            #     tol = 0.005
+            # elif Re >= 800:
+            #     tol = 0.001
             # elif Re >= 5000:
             #     F = 0.001
-            
+            print "tol: ", tol
+
         if n % figRes == 0:
 
             if figCount < 10:
@@ -369,7 +372,7 @@ def channel(nt):
     v = np.zeros((ny, nx))
     p = np.zeros((ny, nx))
     b = np.zeros((ny, nx))
-    u, v, p = channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F)
+    u, v, p = channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F, tol)
     fig = plt.figure(figsize=(11,7), dpi=100)
     plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
     plt.colorbar()
