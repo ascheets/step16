@@ -4,19 +4,21 @@ from matplotlib import cm
 import matplotlib.pyplot as plt
 import numpy as np
 
-nx = 501
-ny = 501
+nx = 201
+ny = 201
 
 secs = 500
 
-nit=25
+nit = 50
 
 tol = 0.05
-sigma = 0.5
-c = 5.0
+dif = 0.0001
 
-radius = ny/60
-l = 2.0
+sigma = 0.2
+c = 40.0
+
+radius = ny/8
+l = 10.0
 w = 2.0
 
 dx = l/(nx-1)
@@ -30,15 +32,18 @@ y = np.linspace(0,w,ny)
 L = l/30
 X,Y = np.meshgrid(x,y)
 
-rho = 0.1
+#decrease rho, raise mu to decrease Re
+#increase rho, lower mu to increase Re
+
+rho = 1.0
 #nu = .01
 mu = 0.0001
 nu = mu/rho
-F = 150
 
+F = 250.0
 
 #arrow density resolution
-res = 6
+res = 8
 #plotting figure resolution
 figRes = 2
 
@@ -46,6 +51,42 @@ u = np.zeros((ny, nx))
 v = np.zeros((ny, nx))
 p = np.zeros((ny, nx)) 
 b = np.zeros((ny, nx))
+
+#implement cylinder, rectangle
+cyl = np.ones((ny,nx))
+rec = np.ones((ny,nx))
+x0 = nx/3
+y0 = ny/2
+theta = 0
+
+dTheta = np.pi/(nx*5)
+dX = l/nx
+
+r = radius
+
+while theta <= 2*np.pi:
+    
+    x = x0 + r*np.cos(theta)
+    y = y0 + r*np.sin(theta)
+            
+    #-y:y -->full
+    cyl[-y:y,x] = 0
+
+    theta = theta +  dTheta
+
+xMax = x0 + 4*nx*(dx)
+x = x0
+y = y0 + 4*nx*(dX)
+
+while x <= xMax:
+
+    rec[y,x:(x+nx*dx)] = 0
+
+    y = y - dX
+
+    x = x + dX
+
+    
 
 #building up the source term for poisson pressure equation
 def buildUpB(b, rho, dt, u, v, dx, dy):
@@ -93,16 +134,16 @@ def presPoisson(p, dx, dy, b, l1norm_target):
     while l1norm > l1norm_target:
 
         pn = p.copy()
-        p[1:-1,1:-1] =( ((pn[1:-1,2:]+pn[1:-1,0:-2])*dy**2+(pn[2:,1:-1]+pn[0:-2,1:-1])*dx**2)/(2*(dx**2+dy**2)) - #remnants of laplacian pressure business
-                        rho*dx**2*dy**2/(2*(dx**2+dy**2))* #weird term that comes about from transposing
-                        b[1:-1,1:-1] ) #source term
+        p[1:-1,1:-1] = ( ((pn[1:-1,2:]+pn[1:-1,0:-2])*dy**2+(pn[2:,1:-1]+pn[0:-2,1:-1])*dx**2)/(2*(dx**2+dy**2)) - #remnants of laplacian pressure business
+                       rho*dx**2*dy**2/(2*(dx**2+dy**2))* #weird term that comes about from transposing
+                       b[1:-1,1:-1] ) #source term
         
         #explicity calculate pressure at x = 2,0 (periodic BCS)
-        p[1:-1,-1] =( ((pn[1:-1,0]+pn[1:-1,-2])*dy**2+(pn[2:,-1]+pn[0:-2,-1])*dx**2)/(2*(dx**2+dy**2)) - #remnants of laplacian pressure business
+        p[1:-1,-1] = ( ((pn[1:-1,0]+pn[1:-1,-2])*dy**2+(pn[2:,-1]+pn[0:-2,-1])*dx**2)/(2*(dx**2+dy**2)) - #remnants of laplacian pressure business
                         rho*dx**2*dy**2/(2*(dx**2+dy**2))* #weird term that comes about from transposing
                         b[1:-1,-1] ) #source term
 
-        p[1:-1,0] =( ((pn[1:-1,1]+pn[1:-1,-1])*dy**2+(pn[2:,0]+pn[0:-2,0])*dx**2)/(2*(dx**2+dy**2)) - #remnants of laplacian pressure business
+        p[1:-1,0] = ( ((pn[1:-1,1]+pn[1:-1,-1])*dy**2+(pn[2:,0]+pn[0:-2,0])*dx**2)/(2*(dx**2+dy**2)) - #remnants of laplacian pressure business
                         rho*dx**2*dy**2/(2*(dx**2+dy**2))* #weird term that comes about from transposing
                         b[1:-1,0] ) #source term
 
@@ -116,32 +157,18 @@ def presPoisson(p, dx, dy, b, l1norm_target):
         #p[:,0]=p[:,1]    ##dp/dx = 0 at x = 0
         #p[:,-1]=0        ##p = 0 at x = 2
 
-        l1norm = (np.sum(np.abs(p[:]) - np.abs(pn[:])))/np.sum(np.abs(pn[:] + 0.00001))
+        l1norm = (np.sum(np.abs(p[:]) - np.abs(pn[:])))/np.sum(np.abs(pn[:] + 0.000001))
 
-        #cylinder
-        x0 = nx/3
-        y0 = ny/2
-        theta = 0
-        dTheta = np.pi/(nx*5)
-        r = radius
+        #apply the cylinder to the pressure field
+        #p = p*cyl
+        p = p*rec
 
-        while theta <= 2*np.pi:
-            
-            x = x0 + r*np.cos(theta)
-            y = y0 + r*np.sin(theta)
-            
-            #-y:y -->full
-
-            p[-y:y,x] = 0
-
-            theta = theta +  dTheta
-        
 
     print "its: ", its
 
     return p
 
-def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F, tol):
+def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F, tol, cyl, dif):
     un = np.empty_like(u)
     vn = np.empty_like(v)
     b = np.zeros((ny, nx))
@@ -214,52 +241,22 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F, tol):
         #u[:,-1] = 0
 
         # # # #restriction nozzleish
-        # u[0:2*ny/5,2.7*nx/5:3*nx/5] = 0 #bottom 
-        # u[3*ny/5:-1,2.7*nx/5:3*nx/5] = 0 #top
-        # v[0:2*ny/5,2.7*nx/5:3*nx/5] = 0 #bottom
-        # v[3*ny/5:-1,2.7*nx/5:3*nx/5] = 0 #top
+        #u[0:2*ny/5,2.7*nx/5:3*nx/5] = 0 #bottom 
+        #u[3*ny/5:-1,2.7*nx/5:3*nx/5] = 0 #top
+        #v[0:2*ny/5,2.7*nx/5:3*nx/5] = 0 #bottom
+        #v[3*ny/5:-1,2.7*nx/5:3*nx/5] = 0 #top
 
         # restriction dropoff
-        # u[0:3*ny/5,0:nx/5] = 0 #bottom 
-        # u[4*ny/5:-1,:] = 0 #top
-        # v[0:3*ny/5,0:nx/5] = 0 #bottom
-        # v[4*ny/5:-1,:] = 0 #top
+        #u[0:3*ny/5,0:nx/5] = 0 #bottom 
+        #u[4*ny/5:-1,:] = 0 #top
+        #v[0:3*ny/5,0:nx/5] = 0 #bottom
+        #v[4*ny/5:-1,:] = 0 #top
 
-        #cylinder
-        x0 = nx/3
-        y0 = ny/2
-        theta = 0
-        dTheta = np.pi/(nx*5)
-        r = radius
+        u = u*rec
+        v = v*rec
 
-        while theta <= 2*np.pi:
-            
-            x = x0 + r*np.cos(theta)
-            y = y0 + r*np.sin(theta)
-            
-            #-y:y -->full
-
-            u[-y:y,x] = 0
-            v[-y:y,x] = 0
-
-            theta = theta +  dTheta
-            
-        #x0 = nx/2
-        #y0 = 0
-        #theta = 0
-        #dTheta = np.pi/(nx*5)
-        #r = ny/3
-            
-        # while theta <= np.pi:
-
-        #     x = x0 + r*np.cos(theta)
-        #     y = y0 + r*np.sin(theta)
-
-        #     u[y,x:-x] = 0
-        #     v[y,x:-x] = 0
-
-        #     theta = theta + dTheta
-            
+        #u = u*cyl
+        #v = v*cyl            
 
         #upper walls
         u[-1,:] = 0    
@@ -267,6 +264,8 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F, tol):
         
         #v[:,0] = 0
         #v[:,-1] = 0 #x boundary conditions periodic, dealt with above...
+
+        #tol = tol - dif
 
         if n % figRes == 0:
 
@@ -277,15 +276,12 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F, tol):
             print "Re: ", Re
             print "F: ", F
             cfl = (meanU*dt)/dx
-            print "sigma: ", cfl
-            #when the Re gets to 2000, turn down the pressure
-            # if Re >= 500:
-            #     tol = 0.005
-            # elif Re >= 800:
-            #     tol = 0.001
-            # elif Re >= 5000:
-            #     F = 0.001
+            print "sigma: ", cfl            
             print "tol: ", tol
+
+            #when the Re gets to x, adjust ...
+            #if meanU >= 20:
+            #    F = F/2
 
         if n % figRes == 0:
 
@@ -295,11 +291,11 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F, tol):
 
                 ###plotting the pressure field as a contour
                 fig = plt.figure(figsize=(11,7), dpi=100)
-                bounds = np.linspace(-0.05, 0.05, 15, endpoint=True)
-                sc = plt.contourf(X,Y,p,alpha=0.5,vmin=-0.03,vmax=0.03,levels=bounds,extend='both',cmap='bwr') 
+                bounds = np.linspace(-8.0, 8.0, 50, endpoint=True)
+                sc = plt.contourf(X,Y,p,alpha=0.5,vmin=-8.0,vmax=8.0,levels=bounds,extend='both',cmap='bwr') 
                 cb = plt.colorbar(sc)
 
-                plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res])
+                plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res], cmap=cm.seismic)
                 plt.xlabel('X')
                 plt.ylabel('Y')
 
@@ -313,11 +309,11 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F, tol):
 
                 ###plotting the pressure field as a contour
                 fig = plt.figure(figsize=(11,7), dpi=100)
-                bounds = np.linspace(-0.05, 0.05, 15, endpoint=True)
-                sc = plt.contourf(X,Y,p,alpha=0.5,vmin=-0.03,vmax=0.03,levels=bounds,extend='both',cmap='bwr') 
+                bounds = np.linspace(-8.0, 8.0, 15, endpoint=True)
+                sc = plt.contourf(X,Y,p,alpha=0.5,vmin=-8.0,vmax=8.0,levels=bounds,extend='both',cmap='bwr') 
                 cb = plt.colorbar(sc)
 
-                plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res])
+                plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res], cmap=cm.seismic)
                 plt.xlabel('X')
                 plt.ylabel('Y')
 
@@ -331,8 +327,8 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F, tol):
                 
                 ###plotting the pressure field as a contour
                 fig = plt.figure(figsize=(11,7), dpi=100)
-                bounds = np.linspace(-0.05, 0.05, 15, endpoint=True)
-                sc = plt.contourf(X,Y,p,alpha=0.5,vmin=-0.03,vmax=0.03,levels=bounds,extend='both',cmap='bwr') 
+                bounds = np.linspace(-10.0, 10.0, 15, endpoint=True)
+                sc = plt.contourf(X,Y,p,alpha=0.5,vmin=-10.0,vmax=10.0,levels=bounds,extend='both',cmap='bwr') 
                 cb = plt.colorbar(sc)
                 
                 plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res])
@@ -349,8 +345,8 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F, tol):
             
                 ###plotting the pressure field as a contour
                 fig = plt.figure(figsize=(11,7), dpi=100)
-                bounds = np.linspace(-0.05, 0.05, 15, endpoint=True)
-                sc = plt.contourf(X,Y,p,alpha=0.5,vmin=-0.05,vmax=0.05,levels=bounds,extend='both',cmap='bwr') 
+                bounds = np.linspace(-10.0, 10.0, 15, endpoint=True)
+                sc = plt.contourf(X,Y,p,alpha=0.5,vmin=-10.0,vmax=10.0,levels=bounds,extend='both',cmap='bwr') 
                 cb = plt.colorbar(sc)
 
                 plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res])
@@ -372,7 +368,7 @@ def channel(nt):
     v = np.zeros((ny, nx))
     p = np.zeros((ny, nx))
     b = np.zeros((ny, nx))
-    u, v, p = channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F, tol)
+    u, v, p = channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F, tol, cyl, dif)
     fig = plt.figure(figsize=(11,7), dpi=100)
     plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
     plt.colorbar()
