@@ -4,10 +4,10 @@ from matplotlib import cm
 import matplotlib.pyplot as plt
 import numpy as np
 
-nx = 201
-ny = 201
+nx = 101
+ny = 101
 
-secs = 500
+secs = 12000
 
 nit = 50
 
@@ -18,8 +18,8 @@ sigma = 0.2
 c = 40.0
 
 radius = ny/8
-l = 10.0
-w = 2.0
+l = 1.0
+w = 1.0
 
 dx = l/(nx-1)
 dy = w/(ny-1)
@@ -28,8 +28,10 @@ print "dt: ", dt
 x = np.linspace(0,l,nx)
 y = np.linspace(0,w,ny)
 
+reNums = np.zeros(secs/2)
+
 #characteristic length is diameter of cylinder
-L = l/30
+L = w
 X,Y = np.meshgrid(x,y)
 
 #decrease rho, raise mu to decrease Re
@@ -37,10 +39,11 @@ X,Y = np.meshgrid(x,y)
 
 rho = 1.0
 #nu = .01
-mu = 0.0001
+mu = 0.999
 nu = mu/rho
 
-F = 250.0
+F = 20.0
+Fcor = F*2
 
 #arrow density resolution
 res = 8
@@ -52,39 +55,39 @@ v = np.zeros((ny, nx))
 p = np.zeros((ny, nx)) 
 b = np.zeros((ny, nx))
 
-#implement cylinder, rectangle
+# #implement cylinder, rectangle
 cyl = np.ones((ny,nx))
-rec = np.ones((ny,nx))
-x0 = nx/3
-y0 = ny/2
-theta = 0
+#rec = np.ones((ny,nx))
+# x0 = nx/3
+# y0 = ny/2
+# theta = 0
 
-dTheta = np.pi/(nx*5)
-dX = l/nx
+# dTheta = np.pi/(nx*5)
+# dX = l/nx
 
-r = radius
+# r = radius
 
-while theta <= 2*np.pi:
+# while theta <= 2*np.pi:
     
-    x = x0 + r*np.cos(theta)
-    y = y0 + r*np.sin(theta)
+#     x = x0 + r*np.cos(theta)
+#     y = y0 + r*np.sin(theta)
             
-    #-y:y -->full
-    cyl[-y:y,x] = 0
+#     #-y:y -->full
+#     cyl[-y:y,x] = 0
 
-    theta = theta +  dTheta
+#     theta = theta +  dTheta
 
-xMax = x0 + 4*nx*(dx)
-x = x0
-y = y0 + 4*nx*(dX)
+# xMax = x0 + 4*nx*(dx)
+# x = x0
+# y = y0 + 4*nx*(dX)
 
-while x <= xMax:
+# while x <= xMax:
 
-    rec[y,x:(x+nx*dx)] = 0
+#     rec[y,x:(x+nx*dx)] = 0
 
-    y = y - dX
+#     y = y - dX
 
-    x = x + dX
+#     x = x + dX
 
     
 
@@ -161,7 +164,7 @@ def presPoisson(p, dx, dy, b, l1norm_target):
 
         #apply the cylinder to the pressure field
         #p = p*cyl
-        p = p*rec
+        #p = p*rec
 
 
     print "its: ", its
@@ -252,8 +255,8 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F, tol, cyl, dif):
         #v[0:3*ny/5,0:nx/5] = 0 #bottom
         #v[4*ny/5:-1,:] = 0 #top
 
-        u = u*rec
-        v = v*rec
+        #u = u*rec
+        #v = v*rec
 
         #u = u*cyl
         #v = v*cyl            
@@ -267,12 +270,26 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F, tol, cyl, dif):
 
         #tol = tol - dif
 
+        if n == 1:
+
+            velocity = u[:,ny/2]
+            dpdx = np.average(p[:,0]-p[:,1])
+            print "dpdx: ", dpdx
+
+            #for analytical solution
+            r = np.linspace(-0.5,0.5,ny)
+            uPara = 1.0/4.0*mu*Fcor*(0.5**2 - r**2)
+
+            plt.plot(velocity, r, "o", label="From Simulation")
+            plt.plot(uPara, r, "m", label="Analytical, Parabolic Flow")
+
         if n % figRes == 0:
 
             meanU = np.average(u)
             print "n of nt: ", n, "/", secs
             print "meanU = ", meanU
             Re = (rho*meanU*L)/mu
+            reNums[n/2] = Re
             print "Re: ", Re
             print "F: ", F
             cfl = (meanU*dt)/dx
@@ -283,81 +300,127 @@ def channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F, tol, cyl, dif):
             #if meanU >= 20:
             #    F = F/2
 
-        if n % figRes == 0:
-
-            if figCount < 10:
-
-                #plot the current state of u,v,p
-
-                ###plotting the pressure field as a contour
-                fig = plt.figure(figsize=(11,7), dpi=100)
-                bounds = np.linspace(-8.0, 8.0, 50, endpoint=True)
-                sc = plt.contourf(X,Y,p,alpha=0.5,vmin=-8.0,vmax=8.0,levels=bounds,extend='both',cmap='bwr') 
-                cb = plt.colorbar(sc)
-
-                plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res], cmap=cm.seismic)
-                plt.xlabel('X')
-                plt.ylabel('Y')
-
-                path = "./pngs/fig-00" + format(figCount) + ".png"
-                plt.savefig(path)
-                plt.close("all")
-
-                figCount = figCount + 1
-                              
-            elif figCount < 100:
-
-                ###plotting the pressure field as a contour
-                fig = plt.figure(figsize=(11,7), dpi=100)
-                bounds = np.linspace(-8.0, 8.0, 15, endpoint=True)
-                sc = plt.contourf(X,Y,p,alpha=0.5,vmin=-8.0,vmax=8.0,levels=bounds,extend='both',cmap='bwr') 
-                cb = plt.colorbar(sc)
-
-                plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res], cmap=cm.seismic)
-                plt.xlabel('X')
-                plt.ylabel('Y')
-
-                path = "./pngs/fig-0" + format(figCount) + ".png"
-                plt.savefig(path)
-                plt.close("all")
-
-                figCount = figCount + 1
-                              
-            elif figCount < 1000:
-                
-                ###plotting the pressure field as a contour
-                fig = plt.figure(figsize=(11,7), dpi=100)
-                bounds = np.linspace(-10.0, 10.0, 15, endpoint=True)
-                sc = plt.contourf(X,Y,p,alpha=0.5,vmin=-10.0,vmax=10.0,levels=bounds,extend='both',cmap='bwr') 
-                cb = plt.colorbar(sc)
-                
-                plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res])
-                plt.xlabel('X')
-                plt.ylabel('Y')
-                
-                path = "./pngs/fig-" + format(figCount) + ".png"
-                plt.savefig(path)
-                plt.close("all")
-                
-                figCount = figCount + 1
-              
-            else:
+        if n % 400 == 0 and n != 1 and n < 2000:
             
-                ###plotting the pressure field as a contour
-                fig = plt.figure(figsize=(11,7), dpi=100)
-                bounds = np.linspace(-10.0, 10.0, 15, endpoint=True)
-                sc = plt.contourf(X,Y,p,alpha=0.5,vmin=-10.0,vmax=10.0,levels=bounds,extend='both',cmap='bwr') 
-                cb = plt.colorbar(sc)
+            #would like to plot velocity profile
+            #from middle of pipe here
+            #plt.figure(figsize=(11,7), dpi=100)
 
-                plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res])
-                plt.xlabel('X')
-                plt.ylabel('Y')
+            #grab the x comp of velocity at the middle of the pipe
+            velocity = u[:,ny/2]
+            dpdx = np.average(p[:,0]-p[:,1])
+            print "dpdx: ", dpdx
+
+            #for analytical solution
+            r = np.linspace(-0.5,0.5,ny)
+            uPara = 1.0/4.0*mu*Fcor*(0.5**2 - r**2)
+
+            plt.plot(velocity, r, "o")
+            plt.plot(uPara, r, "m")
+            # plt.title("x-Component of velocity vs. Vertical Position in Pipe")
+            # plt.xlabel('Velocity')
+            # plt.ylabel('Vertical Position in Pipe')
+            # plt.legend()
+
+        if n == 10000:
+            
+            #would like to plot velocity profile
+            #from middle of pipe here
+            #plt.figure(figsize=(11,7), dpi=100)
+
+            #grab the x comp of velocity at the middle of the pipe
+            velocity = u[:,ny/2]
+            dpdx = np.average(p[:,0]-p[:,1])
+            print "dpdx: ", dpdx
+
+            #for analytical solution
+            r = np.linspace(-0.5,0.5,ny)
+            uPara = 1.0/4.0*mu*Fcor*(0.5**2 - r**2)
+
+            plt.plot(velocity, r, "o")
+            plt.plot(uPara, r, "m")
+            # plt.title("x-Component of velocity vs. Vertical Position in Pipe")
+            # plt.xlabel('Velocity')
+            # plt.ylabel('Vertical Position in Pipe')
+            # plt.legend()
+
+
+
+        # if n % figRes == 0:
+
+        #     if figCount < 10:
+
+        #         #plot the current state of u,v,p
+
+        #         ###plotting the pressure field as a contour
+        #         fig = plt.figure(figsize=(11,7), dpi=100)
+        #         bounds = np.linspace(-8.0, 8.0, 50, endpoint=True)
+        #         sc = plt.contourf(X,Y,p,alpha=0.5,vmin=-8.0,vmax=8.0,levels=bounds,extend='both',cmap='bwr') 
+        #         cb = plt.colorbar(sc)
+
+        #         plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res], cmap=cm.seismic)
+        #         plt.xlabel('X')
+        #         plt.ylabel('Y')
+
+        #         path = "./pngs/fig-00" + format(figCount) + ".png"
+        #         plt.savefig(path)
+        #         plt.close("all")
+
+        #         figCount = figCount + 1
+                              
+        #     elif figCount < 100:
+
+        #         ###plotting the pressure field as a contour
+        #         fig = plt.figure(figsize=(11,7), dpi=100)
+        #         bounds = np.linspace(-8.0, 8.0, 15, endpoint=True)
+        #         sc = plt.contourf(X,Y,p,alpha=0.5,vmin=-8.0,vmax=8.0,levels=bounds,extend='both',cmap='bwr') 
+        #         cb = plt.colorbar(sc)
+
+        #         plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res], cmap=cm.seismic)
+        #         plt.xlabel('X')
+        #         plt.ylabel('Y')
+
+        #         path = "./pngs/fig-0" + format(figCount) + ".png"
+        #         plt.savefig(path)
+        #         plt.close("all")
+
+        #         figCount = figCount + 1
+                              
+        #     elif figCount < 1000:
                 
-                path = "./pngs/fig-" + format(figCount) + ".png"
-                plt.savefig(path)
-                plt.close("all")
+        #         ###plotting the pressure field as a contour
+        #         fig = plt.figure(figsize=(11,7), dpi=100)
+        #         bounds = np.linspace(-10.0, 10.0, 15, endpoint=True)
+        #         sc = plt.contourf(X,Y,p,alpha=0.5,vmin=-10.0,vmax=10.0,levels=bounds,extend='both',cmap='bwr') 
+        #         cb = plt.colorbar(sc)
                 
-                figCount = figCount + 1
+        #         plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res])
+        #         plt.xlabel('X')
+        #         plt.ylabel('Y')
+                
+        #         path = "./pngs/fig-" + format(figCount) + ".png"
+        #         plt.savefig(path)
+        #         plt.close("all")
+                
+        #         figCount = figCount + 1
+              
+        #     else:
+            
+        #         ###plotting the pressure field as a contour
+        #         fig = plt.figure(figsize=(11,7), dpi=100)
+        #         bounds = np.linspace(-10.0, 10.0, 15, endpoint=True)
+        #         sc = plt.contourf(X,Y,p,alpha=0.5,vmin=-10.0,vmax=10.0,levels=bounds,extend='both',cmap='bwr') 
+        #         cb = plt.colorbar(sc)
+
+        #         plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res])
+        #         plt.xlabel('X')
+        #         plt.ylabel('Y')
+                
+        #         path = "./pngs/fig-" + format(figCount) + ".png"
+        #         plt.savefig(path)
+        #         plt.close("all")
+                
+        #         figCount = figCount + 1
               
     return u, v, p
 
@@ -369,18 +432,61 @@ def channel(nt):
     p = np.zeros((ny, nx))
     b = np.zeros((ny, nx))
     u, v, p = channelFlow(nt, u, v, dt, dx, dy, p, rho, nu, F, tol, cyl, dif)
-    fig = plt.figure(figsize=(11,7), dpi=100)
-    plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
-    plt.colorbar()
+    plt.title("Velocity Profile, Middle of the Pipe, Over Time")
+    plt.xlabel('Velocity')
+    plt.ylabel('Vertical Position in Pipe')
+    plt.legend()
+    plt.show()
+    #fig = plt.figure(figsize=(11,7), dpi=100)
+    #plt.contourf(X,Y,p,alpha=0.5)    ###plotting the pressure field as a contour
+    #plt.colorbar()
     #plt.contour(X,Y,p)               ###plotting the pressure field outlines
-    plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res]) ##plotting velocity ::3 --> only plot every 3rd data point
-    plt.xlabel('X')
-    plt.ylabel('Y')
+    #plt.quiver(X[::res,::res],Y[::res,::res],u[::res,::res],v[::res,::res]) ##plotting velocity ::3 --> only plot every 3rd data point
+    #plt.xlabel('X')
+    #plt.ylabel('Y')
 
     meanU = np.average(u)
     print "meanU = ", meanU
     Re = (rho*meanU*L)/mu
     print "Re: ", Re
+
+    #would like to plot velocity profile
+    #from middle of pipe here
+    fig = plt.figure(figsize=(11,7), dpi=100)
+
+    #grab the x comp of velocity at the middle of the pipe
+    velocity = u[:,ny/2]
+    dpdx = np.average(p[:,0]-p[:,1])
+    print "dpdx: ", dpdx
+
+    #for analytical solution
+    r = np.linspace(-0.5,0.5,ny)
+    uPara = 1.0/4.0*mu*Fcor*(0.5**2 - r**2)
+
+    plt.plot(velocity, r, "ro", label="From Simulation")
+    plt.plot(uPara, r, "m", label="Analytical, Parabolic Flow")
+    plt.title("x-Component of velocity vs. Vertical Position in Pipe")
+    plt.xlabel('Velocity')
+    plt.ylabel('Vertical Position in Pipe')
+    plt.legend()
+    plt.show()
+
+    #would like to plot velocity profile
+    #from middle of pipe here
+    fig = plt.figure(figsize=(11,7), dpi=100)
+
+    #for analytical solution
+    t = np.linspace(0, secs, (secs/2))
+
+    print reNums.shape
+    print t.shape
+
+    plt.plot(t[::100], reNums[::100], "ro", label="Reynolds Number")
+    plt.title("Reynolds Number over Time")
+    plt.xlabel('Time')
+    plt.ylabel('Reynolds Number')
+    plt.legend(loc=4)
+    plt.show()
 
     return
 
